@@ -1,0 +1,25 @@
+[project]
+name = "futurisys-churn-api"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.116.1",
+    "joblib>=1.5.2",
+    "pandas>=2.3.2",
+    "scikit-learn>=1.7.1",
+    "uvicorn[standard]>=0.35.0",
+    "xgboost>=3.0.4",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=8.4.1",
+    "ruff>=0.12.11",
+]
+
+# Permet de trouver nos packages dans le répertoire src
+[tool.setuptools.packages.find]
+where = ["src"]
