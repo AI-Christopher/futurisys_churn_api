@@ -1,0 +1,43 @@
+name: Pipeline CI pour l'API Futurisys
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Installer uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          source $HOME/.cargo/env
+
+      # --- ÉTAPE AJOUTÉE ---
+      # On crée un environnement virtuel nommé .venv
+      # C'est l'équivalent de "uv init" mais en mode non-interactif
+      - name: Créer l'environnement virtuel
+        run: uv venv
+
+      # On installe les dépendances DANS cet environnement virtuel
+      - name: Installer les dépendances
+        run: uv pip install -r requirements.txt
+
+      - name: Linter avec Ruff
+        run: uv run ruff check src/ tests/
+
+      - name: Lancer les tests avec Pytest
+        run: uv run pytest
