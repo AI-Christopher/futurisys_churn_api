@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from futurisys_api.api.main import app # On importe notre application FastAPI
+from futurisys_churn_api.api.main import app # On importe notre application FastAPI
 
 client = TestClient(app)
 
