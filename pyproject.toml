@@ -23,3 +23,8 @@ dev = [
 # Permet de trouver nos packages dans le répertoire src
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# Permet de dire à pytest où trouver les tests
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
