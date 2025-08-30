@@ -37,7 +37,7 @@ jobs:
         run: uv pip install -r requirements.txt
 
       - name: Linter avec Ruff
-        run: ruff check src/ tests/
+        run: uv run ruff check src/ tests/
 
       - name: Lancer les tests avec Pytest
-        run: pytest
+        run: uv run pytest
