@@ -12,7 +12,7 @@ COPY models/ ./models/
 
 # 4. Installer uv et les dépendances
 RUN pip install uv
-RUN uv pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --system --no-cache-dir -r requirements.txt
 
 # 5. Exposer le port sur lequel l'API va tourner
 EXPOSE 8000
