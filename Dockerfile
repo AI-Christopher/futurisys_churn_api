@@ -5,6 +5,9 @@ FROM python:3.12-slim
 # 2. Définir le répertoire de travail dans le conteneur
 WORKDIR /app
 
+# Ajoute le dossier src au chemin de recherche des modules Python
+ENV PYTHONPATH="/app/src:${PYTHONPATH}"
+
 # 3. Copier les fichiers nécessaires
 COPY requirements.txt .
 COPY src/ ./src/
