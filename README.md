@@ -1,3 +1,14 @@
+---
+title: Futurisys Churn Api
+emoji: 🌍
+colorFrom: pink
+colorTo: gray
+sdk: docker
+pinned: false
+license: mit
+short_description: API de détection des démissionnaire
+---
+
 # API de Prédiction de Turnover - Futurisys
 
 Ce projet a pour objectif de déployer un modèle de machine learning capable de prédire la probabilité qu'un employé démissionne. L'accès au modèle se fait via une API RESTful performante.
