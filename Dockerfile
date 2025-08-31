@@ -21,5 +21,4 @@ RUN uv pip install --system --no-cache-dir -r requirements.txt
 EXPOSE 8000
 
 # 6. Commande pour lancer l'API au démarrage du conteneur
-CMD ["gunicorn", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "futurisys_churn_api.api.main:app"]
-# CMD ["uvicorn", "futurisys_churn_api.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "futurisys_churn_api.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--app-dir", "src/"]
