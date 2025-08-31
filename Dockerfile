@@ -18,7 +18,13 @@ RUN pip install uv
 RUN uv pip install --system --no-cache-dir -r requirements.txt
 
 # 5. Exposer le port sur lequel l'API va tourner
-EXPOSE 8000
+#EXPOSE 8000
 
 # 6. Commande pour lancer l'API au démarrage du conteneur
-CMD ["uvicorn", "futurisys_churn_api.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--app-dir", "src/"]
+#CMD ["uvicorn", "futurisys_churn_api.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--app-dir", "src/"]
+
+# HF écoute via $PORT (généralement 7860)
+EXPOSE 7860
+
+# Important: utiliser $PORT
+CMD ["sh", "-c", "uvicorn futurisys_churn_api.api.main:app --host 0.0.0.0 --port ${PORT:-7860} --app-dir src/"]
