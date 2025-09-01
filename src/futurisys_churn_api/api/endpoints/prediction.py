@@ -120,33 +120,25 @@ def predict_churn(employee_data: EmployeeData, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erreur lors de la prédiction : {e}")
     
     # 5. Enregistrer les résultats dans la base
-    if db: # On vérifie si une session de BDD a été fournie
-        print("Enregistrement dans la base de données...")
+    if db is not None:  # explicite
+        # Enregistrer
         db_input = models.PredictionInput(**employee_data.model_dump())
-        db.add(db_input)
-        db.commit()
-        db.refresh(db_input)
-        
+        db.add(db_input); db.commit(); db.refresh(db_input)
         db_output = models.PredictionOutput(
             input_id=db_input.id,
             prediction=int(prediction[0]),
-            churn_probability=float(churn_probability)
+            churn_probability=float(churn_probability),
         )
-        db.add(db_output)
-        db.commit()
-        db.refresh(db_output)
-
-        # Retourner la réponse avec les IDs
+        db.add(db_output); db.commit(); db.refresh(db_output)
         return {
             "prediction_id": db_output.id,
             "input_id": db_input.id,
             "prediction": int(prediction[0]),
-            "churn_probability": float(churn_probability)
+            "churn_probability": float(churn_probability),
         }
     else:
-        # Si pas de BDD, on retourne juste la prédiction
-        print("Pas de base de données configurée, on retourne la prédiction seule.")
+        # Mode “HF / sans BDD”
         return {
             "prediction": int(prediction[0]),
-            "churn_probability": float(churn_probability)
+            "churn_probability": float(churn_probability),
         }

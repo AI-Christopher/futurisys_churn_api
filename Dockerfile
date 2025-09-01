@@ -8,6 +8,9 @@ WORKDIR /app
 # Ajoute le dossier src au chemin de recherche des modules Python
 ENV PYTHONPATH="/app/src:${PYTHONPATH}"
 
+# Désactive la BDD par défaut (HF)
+ENV DATABASE_ENABLED=false
+
 # 3. Copier les fichiers nécessaires
 COPY requirements.txt .
 COPY src/ ./src/
