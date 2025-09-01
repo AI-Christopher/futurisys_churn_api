@@ -5,6 +5,9 @@ from futurisys_churn_api.database import models
 def create_database_tables():
     print("Création des tables dans la base de données...")
     try:
+        # On utilise le nom "models" ici pour rendre l'import utile
+        # Cette ligne ne change rien au fonctionnement, elle ne fait que charger les classes
+        _ = models.Base
         Base.metadata.create_all(bind=engine)
         print("Tables créées avec succès.")
     except Exception as e:
