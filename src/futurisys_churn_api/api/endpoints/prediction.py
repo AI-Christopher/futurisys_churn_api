@@ -120,16 +120,28 @@ def predict_churn(employee_data: EmployeeData, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erreur lors de la prédiction : {e}")
     
     # 5. Enregistrer les résultats dans la base
-    if db is not None:  # explicite
-        # Enregistrer
-        db_input = models.PredictionInput(**employee_data.model_dump())
-        db.add(db_input); db.commit(); db.refresh(db_input)
-        db_output = models.PredictionOutput(
-            input_id=db_input.id,
-            prediction=int(prediction[0]),
-            churn_probability=float(churn_probability),
-        )
-        db.add(db_output); db.commit(); db.refresh(db_output)
+    if db is not None:
+        # Enregistrer (transaction unique)
+        try:
+            db_input = models.PredictionInput(**employee_data.model_dump())
+            db.add(db_input)
+            db.flush()  # pour récupérer db_input.id sans commit
+
+            db_output = models.PredictionOutput(
+                input_id=db_input.id,
+                prediction=int(prediction[0]),
+                churn_probability=float(churn_probability),
+            )
+            db.add(db_output)
+
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+
+        db.refresh(db_input)
+        db.refresh(db_output)
+
         return {
             "prediction_id": db_output.id,
             "input_id": db_input.id,
