@@ -48,10 +48,10 @@ def predict_churn(employee_data: EmployeeData, db: Session = Depends(get_db)):
     """
 
     # 1. Enregistrer les données d'entrée dans la base
-    db_input = models.PredictionInput(**employee_data.model_dump())
-    db.add(db_input)
-    db.commit()
-    db.refresh(db_input) # Pour récupérer l'ID auto-généré
+    #db_input = models.PredictionInput(**employee_data.model_dump())
+    #db.add(db_input)
+    #db.commit()
+    #db.refresh(db_input) # Pour récupérer l'ID auto-généré
 
     # 2. Convertir les données d'entrée en DataFrame
     input_df = pd.DataFrame([employee_data.model_dump()])
