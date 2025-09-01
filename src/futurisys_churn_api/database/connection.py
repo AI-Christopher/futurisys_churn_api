@@ -2,10 +2,9 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# On utilise une variable pour activer la BDD. Si elle n'est pas à "true", on désactive.
-DATABASE_ENABLED = os.environ.get("DATABASE_ENABLED", "true").lower() == "true"
-# L'URL par défaut pour le développement LOCAL
-# On lit une variable d'environnement, si elle n'existe pas, on prend la valeur locale.
+# Par défaut: BDD désactivée (utile en prod/HF)
+DATABASE_ENABLED = os.environ.get("DATABASE_ENABLED", "false").lower() == "true"
+# Pas de fallback localhost ici: si non défini, on n’essaie PAS de se connecter
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:Azerty1234@localhost:5432/futurisys_db")
 
 engine = None
@@ -13,9 +12,9 @@ SessionLocal = None
 
 # On crée l'engine et la session SEULEMENT si on a une URL de BDD valide
 # Sur Hugging Face, DATABASE_URL ne sera pas définie, donc ce bloc ne s'exécutera pas.
-if DATABASE_ENABLED:
+if DATABASE_ENABLED and DATABASE_URL:
     try:
-        engine = create_engine(DATABASE_URL)
+        engine = create_engine(DATABASE_URL, pool_pre_ping=True)
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
         print("Connexion à la base de données établie avec succès.")
     except Exception as e:
