@@ -2,8 +2,11 @@ import joblib
 import json
 import re
 import pandas as pd
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from ..schemas import EmployeeData
+from ...database.connection import SessionLocal
+from ...database import models
+from sqlalchemy.orm import Session
 
 # Crée un "routeur". C'est comme un mini-chapitre de notre API
 router = APIRouter()
@@ -23,22 +26,41 @@ def clean_col_names(df):
     df.columns = new_cols
     return df
 
+
+# Fonction pour obtenir une session de base de données
+def get_db():
+    # Si SessionLocal n'a pas pu être créé, on ne fait rien
+    if SessionLocal is None:
+        yield None
+        return
+        
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 @router.post("/predict", tags=["Predictions"])
-def predict_churn(employee_data: EmployeeData):
+def predict_churn(employee_data: EmployeeData, db: Session = Depends(get_db)):
     """
     Prédit la probabilité de démission d'un employé.
     """
-    # Convertir les données d'entrée en DataFrame
+
+    # 1. Enregistrer les données d'entrée dans la base
+    db_input = models.PredictionInput(**employee_data.model_dump())
+    db.add(db_input)
+    db.commit()
+    db.refresh(db_input) # Pour récupérer l'ID auto-généré
+
+    # 2. Convertir les données d'entrée en DataFrame
     input_df = pd.DataFrame([employee_data.model_dump()])
 
-    # --- DÉBUT DU PREPROCESSING DANS L'API ---
-    # C'est ici qu'on recrée les étapes de Preprocessing du notebook
-
-    # 1. Binarisation (recrée tes fonctions ou applique la logique directement)
+    # 3.--- DÉBUT DU PREPROCESSING DANS L'API ---
+    # Binarisation (recrée tes fonctions ou applique la logique directement)
     input_df['heure_supplementaires'] = (input_df['heure_supplementaires'] == 'Oui').astype(int)
     input_df['genre'] = (input_df['genre'] == 'F').astype(int)
-
-    # 2. Création de features (Feature Engineering)
+    #Création de features (Feature Engineering)
     # Revenue par rapport à la moyenne du poste
     # On calcule le revenu moyen par poste et on le compare au revenu de l'employé.
     moyennes_poste = {
@@ -56,27 +78,27 @@ def predict_churn(employee_data: EmployeeData):
     revenu_moyen_par_poste = input_df['poste'].map(moyennes_poste)
     # On calcule le ratio en utilisant cette moyenne
     input_df['ratio_revenu_poste'] = input_df['revenu_mensuel'] / (revenu_moyen_par_poste + 1)
+    
     # Gérer le cas où un poste inconnu serait envoyé (map retournerait NaN)
     # Dans ce cas, on peut utiliser une moyenne globale ou mettre 1 par défaut.
     input_df['ratio_revenu_poste'].fillna(1, inplace=True) 
-
+    
     # Ratio Augmentation / Promotion
     # On met en relation l'augmentation de salaire avec le temps écoulé depuis la dernière promotion.
     input_df['ratio_augmentation_promotion'] = input_df['augementation_salaire_precedente'] / (input_df['annees_depuis_la_derniere_promotion'] + 1)
-
-    # 3. Encodage des variables catégorielles (One-Hot Encoding)
+    
+    # Encodage des variables catégorielles (One-Hot Encoding)
     categorical_cols_to_encode = ['statut_marital', 'domaine_etude', 'departement']
     input_df = pd.get_dummies(input_df, columns=categorical_cols_to_encode, dummy_na=False)
     input_df = clean_col_names(input_df)
-
-    # 4. Encodage Ordinal
+    # Encodage Ordinal
     mapping_poste = {'Représentant Commercial': 0, 'Consultant': 1, 'Assistant de Direction': 2, 'Ressources Humaines': 3, 'Cadre Commercial': 4, 'Tech Lead': 5, 'Manager': 6, 'Directeur Technique': 7, 'Senior Manager': 8}
     input_df['poste'] = input_df['poste'].map(mapping_poste)
 
     mapping_freq_dict = {'Aucun': 0, 'Occasionnel': 1, 'Fréquent': 2}
     input_df['frequence_deplacement'] = input_df['frequence_deplacement'].map(mapping_freq_dict)
 
-    # 5. Alignement final des colonnes
+    # Alignement final des colonnes
     final_df = pd.DataFrame(columns=model_features)
     final_df = pd.concat([final_df, input_df])
     final_df.fillna(0, inplace=True) # Remplit les colonnes manquantes (dummies) avec 0
@@ -89,15 +111,42 @@ def predict_churn(employee_data: EmployeeData):
 
     # --- FIN DU PREPROCESSING ---
 
-    # 7. Prédiction
+    # 4. Prédiction
     try:
         prediction = model.predict(final_df)
         probability = model.predict_proba(final_df)
         churn_probability = probability[0][1]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de la prédiction : {e}")
+    
+    # 5. Enregistrer les résultats dans la base
+    if db: # On vérifie si une session de BDD a été fournie
+        print("Enregistrement dans la base de données...")
+        db_input = models.PredictionInput(**employee_data.model_dump())
+        db.add(db_input)
+        db.commit()
+        db.refresh(db_input)
+        
+        db_output = models.PredictionOutput(
+            input_id=db_input.id,
+            prediction=int(prediction[0]),
+            churn_probability=float(churn_probability)
+        )
+        db.add(db_output)
+        db.commit()
+        db.refresh(db_output)
 
-    return {
-        "prediction": int(prediction[0]),
-        "churn_probability": float(churn_probability)
-    }
+        # Retourner la réponse avec les IDs
+        return {
+            "prediction_id": db_output.id,
+            "input_id": db_input.id,
+            "prediction": int(prediction[0]),
+            "churn_probability": float(churn_probability)
+        }
+    else:
+        # Si pas de BDD, on retourne juste la prédiction
+        print("Pas de base de données configurée, on retourne la prédiction seule.")
+        return {
+            "prediction": int(prediction[0]),
+            "churn_probability": float(churn_probability)
+        }
