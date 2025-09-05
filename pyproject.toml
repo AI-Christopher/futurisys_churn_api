@@ -21,6 +21,7 @@ dependencies = [
 dev = [
     "httpx>=0.28.1",
     "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
     "ruff>=0.12.11",
 ]
 
@@ -32,3 +33,9 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+addopts = [
+    "--cov=src/futurisys_churn_api", # Mesure la couverture de notre package
+    "--cov-report=term-missing",    # Affiche les lignes manquantes
+    "--cov-fail-under=80"           # Fait échouer les tests si la couverture < 80%
+]
