@@ -14,13 +14,14 @@ dependencies = [
     "scikit-learn>=1.7.1",
     "sqlalchemy>=2.0.43",
     "uvicorn[standard]>=0.35.0",
-    "xgboost>=3.0.4",
+    "xgboost>=3.0.5",
 ]
 
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
     "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
     "ruff>=0.12.11",
 ]
 
@@ -32,3 +33,21 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+addopts = [
+    "--cov=src/futurisys_churn_api", # Mesure la couverture de notre package
+    "--cov-report=term-missing",    # Affiche les lignes manquantes
+    "--cov-fail-under=80"           # Fait échouer les tests si la couverture < 80%
+]
+
+[tool.coverage.run]
+branch = true
+source = ["futurisys_churn_api"]
+omit = [
+  "src/futurisys_churn_api/database/create_db.py",
+  # éventuellement d'autres scripts utilitaires
+]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
