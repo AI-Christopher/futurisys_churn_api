@@ -51,10 +51,11 @@ def predict_churn(employee_data: EmployeeData, db: Session = Depends(get_db)):
     input_df = encode_categorical(input_df)
 
     # Alignement final des colonnes
-    final_df = pd.DataFrame(columns=model_features)
-    final_df = pd.concat([final_df, input_df])
-    final_df.fillna(0, inplace=True) # Remplit les colonnes manquantes (dummies) avec 0
-    final_df = final_df[model_features] # Assure le bon ordre et supprime les colonnes en trop
+    #final_df = pd.DataFrame(columns=model_features)
+    #final_df = pd.concat([final_df, input_df])
+    #final_df.fillna(0, inplace=True) # Remplit les colonnes manquantes (dummies) avec 0
+    #final_df = final_df[model_features] # Assure le bon ordre et supprime les colonnes en trop
+    final_df = input_df.reindex(columns=model_features, fill_value=0)
 
     try:
         final_df = final_df.astype(float)
