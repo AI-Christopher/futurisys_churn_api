@@ -39,3 +39,15 @@ addopts = [
     "--cov-report=term-missing",    # Affiche les lignes manquantes
     "--cov-fail-under=80"           # Fait échouer les tests si la couverture < 80%
 ]
+
+[tool.coverage.run]
+branch = true
+source = ["futurisys_churn_api"]
+omit = [
+  "src/futurisys_churn_api/database/create_db.py",
+  # éventuellement d'autres scripts utilitaires
+]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
