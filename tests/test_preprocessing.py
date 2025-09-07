@@ -1,13 +1,8 @@
 import pandas as pd
-import numpy as np
 from futurisys_churn_api.api.preprocessing import (
     clean_col_names, 
     convert_binary_to_int, 
     add_features
-)
-from futurisys_churn_api.api.constants import (
-    MAPPING_POSTE, 
-    MAPPING_FREQ
 )
 
 def test_clean_col_names():
