@@ -12,9 +12,12 @@ SessionLocal = None
 
 # On crée l'engine et la session SEULEMENT si on a une URL de BDD valide
 # Sur Hugging Face, DATABASE_URL ne sera pas définie, donc ce bloc ne s'exécutera pas.
-if DATABASE_ENABLED and DATABASE_URL:
+if DATABASE_ENABLED:
     try:
-        engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+        connect_args = {}
+        if DATABASE_URL.startswith("sqlite"):
+            connect_args = {"check_same_thread": False}
+        engine = create_engine(DATABASE_URL, pool_pre_ping=True, connect_args=connect_args)
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
         print("Connexion à la base de données établie avec succès.")
     except Exception as e:
