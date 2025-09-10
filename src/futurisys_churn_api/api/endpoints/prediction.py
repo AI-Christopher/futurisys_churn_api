@@ -36,7 +36,7 @@ def get_db():
 @router.post("/predict", tags=["Predictions"])
 def predict_churn(
     employee_data: EmployeeData,
-    #_api_key_ok = Security(verify_api_key, use_cache=False), # use_cache=False est une bonne pratique
+    _api_key_ok = Security(verify_api_key), # use_cache=False est une bonne pratique
     current_user: User = Security(get_current_user, scopes=["predict:read"]),
     db: Session = Depends(get_db)
     ):
