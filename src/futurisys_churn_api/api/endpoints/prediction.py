@@ -2,10 +2,12 @@ import joblib
 import json
 import pandas as pd
 from ..preprocessing import convert_binary_to_int, add_features, encode_categorical
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Security
+from ..security import get_current_user, verify_api_key
 from ..schemas import EmployeeData
 from ...database.connection import SessionLocal
 from ...database import models
+from ...database.models import User
 from sqlalchemy.orm import Session
 
 # Crée un "routeur". C'est comme un mini-chapitre de notre API
@@ -32,7 +34,12 @@ def get_db():
 
 
 @router.post("/predict", tags=["Predictions"])
-def predict_churn(employee_data: EmployeeData, db: Session = Depends(get_db)):
+def predict_churn(
+    employee_data: EmployeeData,
+    _api_key_ok = Security(verify_api_key), # use_cache=False est une bonne pratique
+    current_user: User = Security(get_current_user, scopes=["predict:read"]),
+    db: Session = Depends(get_db)
+    ):
     """
     Prédit la probabilité de démission d'un employé.
     """
@@ -73,36 +80,38 @@ def predict_churn(employee_data: EmployeeData, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erreur lors de la prédiction : {e}")
     
     # 5. Enregistrer les résultats dans la base
-    if db is not None:
-        # Enregistrer (transaction unique)
+    if db:
         try:
-            db_input = models.PredictionInput(**employee_data.model_dump())
+            # On crée un dictionnaire des données et on y ajoute les ID
+            input_data_dict = employee_data.model_dump()
+            if current_user:
+                input_data_dict['user_id'] = current_user.id
+            
+            db_input = models.PredictionInput(**input_data_dict)
             db.add(db_input)
-            db.flush()  # pour récupérer db_input.id sans commit
+            db.flush()
 
             db_output = models.PredictionOutput(
                 input_id=db_input.id,
+                user_id=current_user.id if current_user else None,
                 prediction=int(prediction[0]),
                 churn_probability=float(churn_probability),
             )
             db.add(db_output)
-
             db.commit()
-        except Exception:
+            db.refresh(db_output)
+
+            return {
+                "prediction_id": db_output.id,
+                "input_id": db_input.id,
+                "prediction": int(prediction[0]),
+                "churn_probability": float(churn_probability),
+            }
+        except Exception as e:
             db.rollback()
-            raise
-
-        db.refresh(db_input)
-        db.refresh(db_output)
-
-        return {
-            "prediction_id": db_output.id,
-            "input_id": db_input.id,
-            "prediction": int(prediction[0]),
-            "churn_probability": float(churn_probability),
-        }
+            raise HTTPException(status_code=500, detail=f"Erreur de base de données : {e}")
     else:
-        # Mode “HF / sans BDD”
+        # Mode sans BDD
         return {
             "prediction": int(prediction[0]),
             "churn_probability": float(churn_probability),
