@@ -50,6 +50,8 @@ branch = true
 source = ["futurisys_churn_api"]
 omit = [
   "src/futurisys_churn_api/database/create_db.py",
+  "src/futurisys_churn_api/database/seed_db.py",
+  "src/futurisys_churn_api/database/batch_predict.py"
   # éventuellement d'autres scripts utilitaires
 ]
 
