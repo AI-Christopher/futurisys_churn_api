@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Par défaut: BDD désactivée (utile en prod/HF)
-DATABASE_ENABLED = os.environ.get("DATABASE_ENABLED", "false").lower() == "true"
+DATABASE_ENABLED = os.environ.get("DATABASE_ENABLED", "true").lower() == "true"
 # Pas de fallback localhost ici: si non défini, on n’essaie PAS de se connecter
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:Azerty1234@localhost:5432/futurisys_db")
 
