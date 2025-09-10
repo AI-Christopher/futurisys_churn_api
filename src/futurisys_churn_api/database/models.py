@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from .connection import Base
 from datetime import datetime, timezone
@@ -8,6 +8,7 @@ class PredictionInput(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     age = Column(Integer)
     revenu_mensuel = Column(Integer)
     nombre_experiences_precedentes = Column(Integer)
@@ -33,15 +34,29 @@ class PredictionInput(Base):
 
     # Relation avec la table des sorties
     output = relationship("PredictionOutput", back_populates="input", uselist=False)
+    user = relationship("User")
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    role = Column(String, default="viewer")  # ex: viewer, analyst, admin
+    is_active = Column(Boolean, default=True)
+
+    predictions = relationship("PredictionOutput", back_populates="user")
 
 class PredictionOutput(Base):
     __tablename__ = "prediction_outputs"
 
     id = Column(Integer, primary_key=True, index=True)
     input_id = Column(Integer, ForeignKey("prediction_inputs.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
     timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     prediction = Column(Integer)
     churn_probability = Column(Float)
     
     # Relation inverse
     input = relationship("PredictionInput", back_populates="output")
+    user = relationship("User", back_populates="predictions")
+
