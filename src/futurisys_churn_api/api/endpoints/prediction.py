@@ -36,10 +36,10 @@ def get_db():
 @router.post("/predict", tags=["Predictions"])
 def predict_churn(
     employee_data: EmployeeData,
-    _api_key_ok = Security(verify_api_key, use_cache=False), # use_cache=False est une bonne pratique
-    current_user: User = Security(get_current_user, scopes=["predict:read"], use_cache=False),
+    #_api_key_ok = Security(verify_api_key, use_cache=False), # use_cache=False est une bonne pratique
+    current_user: User = Security(get_current_user, scopes=["predict:read"]),
     db: Session = Depends(get_db)
-                  ):
+    ):
     """
     Prédit la probabilité de démission d'un employé.
     """
@@ -82,14 +82,14 @@ def predict_churn(
     # 5. Enregistrer les résultats dans la base
     if db:
         try:
-            # On crée le dictionnaire complet pour l'input
+            # On crée un dictionnaire des données et on y ajoute les ID
             input_data_dict = employee_data.model_dump()
             if current_user:
                 input_data_dict['user_id'] = current_user.id
             
             db_input = models.PredictionInput(**input_data_dict)
             db.add(db_input)
-            db.flush() # Récupère l'ID de l'input
+            db.flush()
 
             db_output = models.PredictionOutput(
                 input_id=db_input.id,
@@ -100,9 +100,10 @@ def predict_churn(
             db.add(db_output)
             db.commit()
             db.refresh(db_output)
-            
+
             return {
                 "prediction_id": db_output.id,
+                "input_id": db_input.id,
                 "prediction": int(prediction[0]),
                 "churn_probability": float(churn_probability),
             }
