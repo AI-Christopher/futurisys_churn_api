@@ -87,6 +87,7 @@ def batch_predict():
         for i, input_record in enumerate(inputs_to_process):
             output = PredictionOutput(
                 input_id=input_record.id,
+                user_id=input_record.user_id,
                 prediction=int(predictions[i]),
                 churn_probability=float(probabilities[i][1])
             )
