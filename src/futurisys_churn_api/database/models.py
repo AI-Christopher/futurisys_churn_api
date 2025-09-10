@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from .connection import Base
 from datetime import datetime, timezone
@@ -8,25 +8,20 @@ class PredictionInput(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     age = Column(Integer)
     revenu_mensuel = Column(Integer)
     nombre_experiences_precedentes = Column(Integer)
-    annee_experience_totale = Column(Integer)
     annees_dans_l_entreprise = Column(Integer)
-    annees_dans_le_poste_actuel = Column(Integer)
     annees_depuis_la_derniere_promotion = Column(Integer)
-    annes_sous_responsable_actuel = Column(Integer)
     satisfaction_employee_environnement = Column(Integer)
     note_evaluation_precedente = Column(Integer)
-    niveau_hierarchique_poste = Column(Integer)
     satisfaction_employee_nature_travail = Column(Integer)
     satisfaction_employee_equipe = Column(Integer)
     satisfaction_employee_equilibre_pro_perso = Column(Integer)
-    note_evaluation_actuelle = Column(Integer)
     augementation_salaire_precedente = Column(Integer)
     nombre_participation_pee = Column(Integer)
     nb_formations_suivies = Column(Integer)
-    nombre_employee_sous_responsabilite = Column(Integer)
     distance_domicile_travail = Column(Integer)
     niveau_education = Column(Integer)
     genre = Column(String)
@@ -39,15 +34,29 @@ class PredictionInput(Base):
 
     # Relation avec la table des sorties
     output = relationship("PredictionOutput", back_populates="input", uselist=False)
+    user = relationship("User")
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    role = Column(String, default="viewer")  # ex: viewer, analyst, admin
+    is_active = Column(Boolean, default=True)
+
+    predictions = relationship("PredictionOutput", back_populates="user")
 
 class PredictionOutput(Base):
     __tablename__ = "prediction_outputs"
 
     id = Column(Integer, primary_key=True, index=True)
     input_id = Column(Integer, ForeignKey("prediction_inputs.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
     timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     prediction = Column(Integer)
     churn_probability = Column(Float)
     
     # Relation inverse
     input = relationship("PredictionInput", back_populates="output")
+    user = relationship("User", back_populates="predictions")
+
