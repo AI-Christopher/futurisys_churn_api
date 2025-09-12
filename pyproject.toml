@@ -51,8 +51,10 @@ source = ["futurisys_churn_api"]
 omit = [
   "src/futurisys_churn_api/database/create_db.py",
   "src/futurisys_churn_api/database/seed_db.py",
-  "src/futurisys_churn_api/database/batch_predict.py"
-  # éventuellement d'autres scripts utilitaires
+  "src/futurisys_churn_api/database/batch_predict.py",
+  "src/futurisys_churn_api/__init__.py",
+  "src/futurisys_churn_api/api/__init__.py",
+  "src/futurisys_churn_api/database/__init__.py"
 ]
 
 [tool.coverage.report]

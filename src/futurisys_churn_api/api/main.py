@@ -1,38 +1,48 @@
+"""
+Point d’entrée FastAPI de l’API Futurisys Churn (sans rate limiting).
+
+Ce module :
+- crée l’application FastAPI (titre, description, version),
+- configure la CORS,
+- branche les routeurs `auth` et `prediction`,
+- expose des endpoints de santé ("/" et "/health").
+
+⚠️ En production, remplace `allow_origins=["*"]` par la liste des domaines front autorisés.
+"""
+
 from fastapi import FastAPI
-from .endpoints import prediction, auth
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
 
+from .endpoints import prediction, auth  # Routes métier
 
+# -- Métadonnées de l’API (affichées dans /docs)
 app = FastAPI(
     title="Futurisys Turnover Prediction API",
     description="API pour prédire la probabilité de démission d'un employé.",
     version="0.1.0",
 )
 
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
-
-@app.exception_handler(RateLimitExceeded)
-def rate_limit_handler(request, exc):
-    return PlainTextResponse("Too Many Requests", status_code=429)
-
-# CORS — adapte aux domaines front autorisés :
+# -- CORS (qui peut appeler l’API ?)
+# En dev on autorise tout. En prod, restreindre aux domaines connus.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Permet à tout le monde de se connecter (OK pour le dev)
+    allow_origins=["*"],            # ex. ["https://ton-front.app"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
+# -- Routeurs
+app.include_router(auth.router)        # /auth/...
+app.include_router(prediction.router)  # /predict
 
-app.include_router(prediction.router)
-
-@app.get("/")
-def read_root():
+# -- Endpoints de santé
+@app.get("/", tags=["Health"])
+def read_root() -> dict[str, str]:
+    """Ping lisible par humain."""
     return {"message": "API de prédiction de turnover - Futurisys"}
+
+@app.get("/health", tags=["Health"])
+def health() -> dict[str, str]:
+    """Endpoint de santé pour monitoring."""
+    return {"status": "ok"}
