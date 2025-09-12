@@ -392,6 +392,7 @@ Client -> FastAPI (/predict) -> preprocessing.py -> modèle (joblib)
                                   +--(si activé)------> Base SQL (inputs/outputs, users si activé)
 ```
 
+
 > Si vous copiez ce README, pensez à placer les images dans le dossier `docs/` du dépôt.
 
 ### Schéma BDD (mode persistance)
