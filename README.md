@@ -62,31 +62,42 @@ Le modèle est servi via une API REST performante et documentée automatiquement
 ```
 .
 ├─ .github/workflows/
-│  └─ ci-pipeline.yml           # CI/CD : lint, tests, build, déploiement
+│  └─ ci-pipeline.yml           # CI/CD : lint (ruff), tests (pytest+cov), build Docker, déploiement HF (main)
 ├─ models/
-│  ├─ churn_model.joblib        # Modèle entraîné
-│  └─ input_features.json       # Features attendues par le modèle (post-preprocessing)
+│  ├─ churn_model.joblib        # Modèle ML entraîné (XGBoost)
+│  └─ input_features.json       # Liste ordonnée des features attendues après preprocessing
 ├─ src/futurisys_churn_api/
 │  ├─ api/
 │  │  ├─ endpoints/
-│  │  │  ├─ prediction.py       # Endpoint /predict
-│  │  │  └─ auth.py             # Endpoints /auth/* (si activés)
-│  │  ├─ constants.py           # Mappings catégoriels
-│  │  ├─ preprocessing.py       # Encodage & features dérivées
-│  │  ├─ schemas.py             # Schémas Pydantic (requêtes)
-│  │  ├─ security.py            # JWT, scopes, user factice (mode sans BDD), X-API-Key
-│  │  └─ main.py                # App FastAPI + CORS
-│  ├─ database/
-│  │  ├─ connection.py          # Connexion SQLAlchemy (PostgreSQL/SQLite), toggle via env
-│  │  └─ models.py              # ORM (PredictionInput/Output, User si activé)
-│  └─ tests/                    # Tests API, DB, preprocessing
-├─ docs/
-│  ├─ er_diagram.png            # Diagramme ER
-│  └─ architecture_diagram.png  # Schéma d'architecture
-├─ Dockerfile
-├─ pyproject.toml
-├─ requirements.txt
-└─ README.md
+│  │  │  ├─ auth.py             # Endpoints /auth/register et /auth/token (JWT, rôles/scopes)
+│  │  │  └─ prediction.py       # Endpoint /predict (préprocessing + inférence + log DB si activée)
+│  │  ├─ constants.py           # Mappings & constantes pour l'encodage (postes, fréquences, etc.)
+│  │  ├─ main.py                # Application FastAPI (CORS, routes, métadonnées)
+│  │  ├─ preprocessing.py       # Fonctions de clean/encodage + features dérivées (OHE, ratios…)
+│  │  ├─ schemas.py             # Schémas Pydantic des requêtes (contrat d’API)
+│  │  └─ security.py            # JWT (OAuth2), vérif scopes, utilisateur factice (dev/tests), X-API-Key
+│  └─ database/
+│     ├─ batch_predict.py       # Batch: génère les prédictions manquantes pour les inputs orphelins
+│     ├─ connection.py          # Création engine/session SQLAlchemy (PostgreSQL/SQLite) via variables d’env
+│     ├─ create_db.py           # Création/Reset des tables (et base si Postgres local)
+│     ├─ models.py              # ORM : PredictionInput, PredictionOutput, User (+ relations)
+│     └─ seed_db.py             # Remplissage initial des inputs depuis le CSV (et user système)
+├─ tests/
+│  ├─ conftest.py               # Fixtures (client avec/sans DB, payload, dataset, etc.)
+│  ├─ test_api.py               # Smoke test du endpoint racine "/"
+│  ├─ test_api_predict.py       # Tests /predict (mode sans DB, différents postes)
+│  ├─ test_auth_security.py     # Auth/register, auth/token, exigence X-API-Key
+│  ├─ test_connection_invalid.py# Fallback si DATABASE_URL invalide (engine None)
+│  ├─ test_db_sql.py            # /predict avec SQLite : vérifie la persistance input/output
+│  ├─ test_encode_categorical.py# Tests unitaires de l’encodage catégoriel (OHE, mappings)
+│  ├─ test_preproc_on_dataset.py# Préprocessing bout-en-bout sur le dataset complet
+│  ├─ test_preprocessing.py     # Tests unitaires (clean, binarisation, features…)
+│  └─ test_preprocessing_errors.py # Cas d’erreurs attendues (colonnes manquantes, etc.)
+├─ Dockerfile                   # Image de déploiement de l’API
+├─ pyproject.toml               # Config projet (deps, ruff, pytest…), compatible uv
+├─ requirements.txt             # Dépendances (si installation sans uv)
+└─ README.md                    # Documentation du projet (installation, usage, sécurité, CI/CD)
+
 ```
 
 <p align="right">(<a href="#readme-top">retour en haut</a>)</p>
@@ -139,7 +150,7 @@ export JWT_EXPIRE_MINUTES=60
 export API_KEY="secret123"   # si défini, /predict exige: X-API-Key: secret123
 ```
 
-> **Note CORS** : par défaut, `main.py` autorise `https://ton-frontend.example`. Adapte `allow_origins` selon ton front.
+> **Exemple CORS** : par défaut, `main.py` autorise tous les domaines (`allow_origins=["*"]`) pour le développement. En production, restreins à ton/tes domaines front (ex. `["https://ton-frontend.example"]`).
 
 ### Base de données (local)
 - Activer : `DATABASE_ENABLED=true`
@@ -160,6 +171,15 @@ python -m futurisys_churn_api.database.seed_db
 # Génère les predictions des données insérées
 python -m futurisys_churn_api.database.batch_predict 
 ```
+### Outil d’export (optionnel)
+
+Un petit script permet d’exporter les prédictions vers un CSV pour un usage BI.
+
+- Script : `src/futurisys_churn_api/database/export_latest_predictions.py`
+- Usage : `python -m futurisys_churn_api.database.export_latest_predictions`
+- Sortie : `exports/predictions.csv`
+
+> Pratique pour valider la partie "outil d’extraction" des attendus.
 
 <p align="right">(<a href="#readme-top">retour en haut</a>)</p>
 
@@ -169,6 +189,13 @@ python -m futurisys_churn_api.database.batch_predict
 
 
 ### 1) JWT (OAuth2 Password Flow)
+
+**Note Swagger (bouton “Authorize”)**
+L’UI Swagger affiche des champs `client_id`, `client_secret` et un sélecteur “Client credentials location”.
+Ces champs **ne sont pas utilisés** dans ce projet (nous sommes en *password flow* simple) :  
+laissez-les **vides** et renseignez uniquement `username` / `password`.
+
+
 - `POST /auth/token` : obtient un access token (Bearer) depuis username/password.
 - Scopes par rôle (exemple) :  
   - `viewer` → `predict:read`  
@@ -217,39 +244,38 @@ curl -X POST http://127.0.0.1:8000/auth/token      -H "Content-Type: application
 ### 2) Appeler `/predict`
 ```bash
 TOKEN="<access_token_reçu>"
+
+> Si `API_KEY` **n’est pas** définie, **n’envoyez pas** l’en-tête `X-API-Key`.
+> S’il est défini côté serveur, l’en-tête `X-API-Key: <valeur>` est **obligatoire** en plus du `Bearer` token.
+
 # Si API_KEY est définie :
 API_KEY="secret123"
 
-curl -X POST http://127.0.0.1:8000/predict   -H "Authorization: Bearer $TOKEN"   -H "Content-Type: application/json"   -H "X-API-Key: $API_KEY"   -d '{
-    "age": 35,
-    "revenu_mensuel": 5000,
-    "nombre_experiences_precedentes": 2,
-    "annee_experience_totale": 10,
-    "annees_dans_l_entreprise": 5,
-    "annees_dans_le_poste_actuel": 3,
-    "annees_depuis_la_derniere_promotion": 1,
-    "annes_sous_responsable_actuel": 2,
-    "satisfaction_employee_environnement": 3,
-    "note_evaluation_precedente": 3,
-    "niveau_hierarchique_poste": 2,
-    "satisfaction_employee_nature_travail": 4,
-    "satisfaction_employee_equipe": 3,
-    "satisfaction_employee_equilibre_pro_perso": 2,
-    "note_evaluation_actuelle": 4,
-    "augementation_salaire_precedente": 15,
-    "nombre_participation_pee": 1,
-    "nb_formations_suivies": 3,
-    "nombre_employee_sous_responsabilite": 4,
-    "distance_domicile_travail": 10,
-    "niveau_education": 4,
-    "genre": "F",
-    "frequence_deplacement": "Frequent",
-    "poste": "Manager",
-    "statut_marital": "Marié(e)",
-    "departement": "Consulting",
-    "domaine_etude": "Transformation Digitale",
-    "heure_supplementaires": "Oui"
-  }'
+curl -X POST http://127.0.0.1:8000/predict   -H "Authorization: Bearer $TOKEN"   -H "Content-Type: application/json"   -H "X-API-Key: $API_KEY"   -d '
+{
+  "age": 35,
+  "revenu_mensuel": 5000,
+  "nombre_experiences_precedentes": 2,
+  "annees_dans_l_entreprise": 5,
+  "annees_depuis_la_derniere_promotion": 1,
+  "satisfaction_employee_environnement": 3,
+  "note_evaluation_precedente": 3,
+  "satisfaction_employee_nature_travail": 4,
+  "satisfaction_employee_equipe": 3,
+  "satisfaction_employee_equilibre_pro_perso": 2,
+  "augementation_salaire_precedente": 15,
+  "nombre_participation_pee": 1,
+  "nb_formations_suivies": 3,
+  "distance_domicile_travail": 10,
+  "niveau_education": 4,
+  "genre": "F",
+  "frequence_deplacement": "Frequent",
+  "poste": "Manager",
+  "statut_marital": "Marié(e)",
+  "departement": "Consulting",
+  "domaine_etude": "Transformation Digitale",
+  "heure_supplementaires": "Oui"
+}'
 ```
 
 **Réponse (sans BDD)** :
