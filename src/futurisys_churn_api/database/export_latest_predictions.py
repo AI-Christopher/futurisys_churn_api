@@ -1,7 +1,8 @@
 from sqlalchemy.orm import sessionmaker
 from futurisys_churn_api.database.connection import engine
 from futurisys_churn_api.database.models import PredictionOutput
-import pandas as pd, os
+import pandas as pd
+import os
 
 def main():
     if engine is None:
