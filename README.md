@@ -392,8 +392,6 @@ Client -> FastAPI (/predict) -> preprocessing.py -> modèle (joblib)
                                   +--(si activé)------> Base SQL (inputs/outputs, users si activé)
 ```
 
-### Diagrammes
-- **ER** : ![ER](docs/er_diagram.png)
 
 > Si vous copiez ce README, pensez à placer les images dans le dossier `docs/` du dépôt.
 
