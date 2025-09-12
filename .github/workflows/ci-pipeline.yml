@@ -79,23 +79,6 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}  # secret à créer dans GitHub
         run: |
-          # 1) Retirer l'image du working dir actuel (par sécurité)
-          rm -f docs/er_diagram.png
-
-          # 2) Config Git
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
-
-          # 3) Créer un snapshot propre sans historique
-          tmpdir=$(mktemp -d)
-          rsync -a --exclude='.git' ./ "$tmpdir"/
-          cd "$tmpdir"
-
-          git init
-          git lfs install
-          git add .
-          git commit -m "Deploy snapshot to HF (no docs/er_diagram.png)"
-          git branch -M main
-
-          # 4) Push en force sur le Space (branche main)
           git push --force https://AI-Christopher:$HF_TOKEN@huggingface.co/spaces/AI-Christopher/futurisys_churn_api main
